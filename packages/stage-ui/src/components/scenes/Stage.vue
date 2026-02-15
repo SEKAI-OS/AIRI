@@ -25,6 +25,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { useDelayMessageQueue, useEmotionsMessageQueue } from '../../composables/queues'
+import { useBridgeExpressionSync } from '../../composables/use-bridge-expression-sync'
 import { llmInferenceEndToken } from '../../constants'
 import { EMOTION_EmotionMotionName_value, EMOTION_VRMExpressionName_value, EmotionThinkMotionName } from '../../constants/emotions'
 import { useAudioContext, useSpeakingStore } from '../../stores/audio'
@@ -80,6 +81,9 @@ const chatHookCleanups: Array<() => void> = []
 const providersStore = useProvidersStore()
 const live2dStore = useLive2d()
 const vrmStore = useModelStore()
+
+// v10.0: Bridge connection for external Python pipeline
+const bridge = useBridgeExpressionSync()
 
 const showStage = ref(true)
 const viewUpdateCleanups: Array<() => void> = []
@@ -526,6 +530,29 @@ defineExpose({
 
 <template>
   <div relative>
+    <!-- v10.0: Bridge subtitle overlay -->
+    <div
+      v-if="bridge.bridgeConnected.value && bridge.bridgeText.value"
+
+      absolute bottom-4 left-4 right-4 z-10 rounded-lg bg-black:60 p-3 text-center text-white backdrop-blur-sm
+    >
+      <div text-sm>
+        {{ bridge.bridgeText.value }}
+      </div>
+      <div v-if="bridge.bridgeEmotion.value" mt-1 text-xs op-60>
+        {{ bridge.bridgeEmotion.value }}
+      </div>
+    </div>
+    <!-- Bridge connection indicator -->
+    <div
+      v-if="bridge.settingsEnabled.value"
+
+      absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full px-2 py-1 text-xs
+      :class="bridge.bridgeConnected.value ? 'bg-green-500:20 text-green-400' : 'bg-red-500:20 text-red-400'"
+    >
+      <div h-2 w-2 rounded-full :class="bridge.bridgeConnected.value ? 'bg-green-400' : 'bg-red-400'" />
+      {{ bridge.bridgeConnected.value ? 'Bridge' : 'Disconnected' }}
+    </div>
     <div h-full w-full>
       <Live2DScene
         v-if="stageModelRenderer === 'live2d' && showStage"
